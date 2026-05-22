@@ -180,3 +180,99 @@ The CodeBuild service role requires the following permissions:
 - **IAM**: The Lambda execution role needs permissions for whatever resources aws-nuke will delete.
 - **Image size**: The aws-nuke binary is ~275 MB uncompressed, but within the 10 GB container image limit.
 - **Config**: Bundle your `nuke-config.yaml` in the image or fetch it from S3 at runtime.
+
+## Further Improvements
+
+Instead of bundling `nuke-config.yaml` in the container image, you can fetch it at runtime from a managed configuration service.
+
+### Option 1: SSM Parameter Store
+
+Store the config as an SSM parameter and fetch it at cold start in the `bootstrap` script:
+
+```bash
+# Fetch nuke config from SSM (add before the runtime loop)
+aws ssm get-parameter \
+  --name "/aws-nuke/config" \
+  --with-decryption \
+  --query "Parameter.Value" \
+  --output text > /tmp/nuke-config.yaml
+```
+
+Store the config:
+
+```bash
+aws ssm put-parameter \
+  --name "/aws-nuke/config" \
+  --type String \
+  --value file://nuke-config.yaml
+```
+
+Lambda role permission required:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": "ssm:GetParameter",
+  "Resource": "arn:aws:ssm:<REGION>:<ACCOUNT_ID>:parameter/aws-nuke/config"
+}
+```
+
+> **Note:** SSM standard parameters have an 8KB size limit. Use Advanced tier for larger configs, or consider AppConfig.
+
+### Option 2: AWS AppConfig
+
+Use the AppConfig Lambda extension (runs locally on port 2772) for built-in caching, validation, and safe deployments:
+
+```bash
+# Fetch nuke config from AppConfig Lambda extension (add before the runtime loop)
+curl -s "http://localhost:2772/applications/aws-nuke/environments/prod/configurations/nuke-config" \
+  > /tmp/nuke-config.yaml
+```
+
+Setup:
+
+1. **Add the AppConfig Lambda extension layer** to your function:
+   ```
+   arn:aws:lambda:<REGION>:080313895113:layer:AWS-AppConfig-Extension:latest
+   ```
+
+2. **Create and deploy the configuration:**
+   ```bash
+   aws appconfig create-application --name aws-nuke
+   aws appconfig create-environment --application-id <APP_ID> --name prod
+   aws appconfig create-configuration-profile \
+     --application-id <APP_ID> --name nuke-config \
+     --location-uri hosted --type AWS.Freeform
+   aws appconfig create-hosted-configuration-version \
+     --application-id <APP_ID> \
+     --configuration-profile-id <PROFILE_ID> \
+     --content fileb://nuke-config.yaml \
+     --content-type "application/x-yaml"
+   aws appconfig start-deployment \
+     --application-id <APP_ID> --environment-id <ENV_ID> \
+     --configuration-profile-id <PROFILE_ID> \
+     --configuration-version 1 \
+     --deployment-strategy-id AppConfig.AllAtOnce
+   ```
+
+3. **Lambda role permission required:**
+   ```json
+   {
+     "Effect": "Allow",
+     "Action": [
+       "appconfig:GetLatestConfiguration",
+       "appconfig:StartConfigurationSession"
+     ],
+     "Resource": "arn:aws:appconfig:<REGION>:<ACCOUNT_ID>:application/<APP_ID>/environment/<ENV_ID>/configuration/<PROFILE_ID>"
+   }
+   ```
+
+### Comparison
+
+| | SSM Parameter Store | AWS AppConfig |
+|---|---|---|
+| Size limit | 8KB (standard) | 1MB |
+| Validation | None | JSON Schema or Lambda validator |
+| Deployment | Instant | Gradual rollout strategies |
+| Caching | Manual | Built-in via Lambda extension |
+| Cost | Free (standard tier) | Per config retrieval |
