@@ -125,7 +125,7 @@ aws codebuild create-project \
    - Environment: `aws/codebuild/amazonlinux-x86_64-standard:5.0` (Amazon Linux 2023)
    - **Privileged mode enabled** (required for Docker builds)
    - Source type: `NO_SOURCE` (for Option B) or your repo (for Option A)
-   - IAM role with permissions for ECR push (`ecr:GetAuthorizationToken`, `ecr:BatchCheckLayerAvailability`, `ecr:PutImage`, `ecr:InitiateLayerUpload`, `ecr:UploadLayerPart`, `ecr:CompleteLayerUpload`)
+   - IAM role with permissions (see [CodeBuild IAM Role Permissions](#codebuild-iam-role-permissions) below)
 
 3. **Create the Lambda function from the image:**
    ```bash
@@ -137,6 +137,41 @@ aws codebuild create-project \
      --timeout 900 \
      --memory-size 512
    ```
+
+## CodeBuild IAM Role Permissions
+
+The CodeBuild service role requires the following permissions:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:CompleteLayerUpload",
+        "ecr:GetAuthorizationToken",
+        "ecr:InitiateLayerUpload",
+        "ecr:PutImage",
+        "ecr:UploadLayerPart"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+> **Note:** For least privilege, scope the ECR actions (except `ecr:GetAuthorizationToken`) to your repository ARN: `arn:aws:ecr:<REGION>:<ACCOUNT_ID>:repository/aws-nuke-lambda`. `ecr:GetAuthorizationToken` must remain `Resource: "*"`.
 
 ## Key Considerations
 
