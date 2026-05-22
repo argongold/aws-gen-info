@@ -40,7 +40,26 @@ while true; do
 done
 ```
 
-## 3. buildspec.yml (CodeBuild)
+## 3. File Placement
+
+Since we are not using a source repository, all files (Dockerfile, bootstrap) are created inline during the build. There are two options:
+
+### Option A: Use a source repository
+
+Place the `Dockerfile`, `bootstrap`, and `buildspec.yml` in the **root of your source repository**:
+
+```
+/
+├── Dockerfile
+├── bootstrap
+└── buildspec.yml
+```
+
+The buildspec references the Dockerfile via `docker build .` which uses the current directory as build context.
+
+### Option B: No source repository (inline buildspec with `NO_SOURCE`)
+
+Use CodeBuild's `NO_SOURCE` type and create all files inline within the buildspec using heredocs:
 
 ```yaml
 version: 0.2
@@ -56,10 +75,43 @@ phases:
       - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPO
   build:
     commands:
+      # Create Dockerfile inline
+      - |
+        cat > Dockerfile <<'EOF'
+        FROM public.ecr.aws/lambda/provided:al2023
+        RUN curl -sL https://github.com/ekristen/aws-nuke/releases/download/v3.64.4/aws-nuke-v3.64.4-linux-amd64.tar.gz | tar xz -C /usr/local/bin aws-nuke
+        COPY bootstrap ${LAMBDA_RUNTIME_DIR}/bootstrap
+        RUN chmod 755 ${LAMBDA_RUNTIME_DIR}/bootstrap
+        CMD ["handler"]
+        EOF
+      # Create bootstrap inline
+      - |
+        cat > bootstrap <<'EOF'
+        #!/bin/bash
+        set -euo pipefail
+        while true; do
+          HEADERS="$(mktemp)"
+          EVENT_DATA=$(curl -sS -LD "$HEADERS" "http://${AWS_LAMBDA_RUNTIME_API}/2018-06-01/runtime/invocation/next")
+          REQUEST_ID=$(grep -Fi Lambda-Runtime-Aws-Request-Id "$HEADERS" | tr -d '[:space:]' | cut -d: -f2)
+          RESPONSE=$(aws-nuke run --config /var/task/nuke-config.yaml --no-prompt 2>&1 || true)
+          curl -sS -X POST "http://${AWS_LAMBDA_RUNTIME_API}/2018-06-01/runtime/invocation/$REQUEST_ID/response" -d "$RESPONSE"
+        done
+        EOF
+      - chmod +x bootstrap
       - docker build -t $ECR_REPO:$IMAGE_TAG .
   post_build:
     commands:
       - docker push $ECR_REPO:$IMAGE_TAG
+```
+
+Create the project with:
+
+```bash
+aws codebuild create-project \
+  --name aws-nuke-build \
+  --source '{"type": "NO_SOURCE", "buildspec": "<inline YAML as escaped string>"}' \
+  --environment '{"type": "LINUX_CONTAINER", "image": "aws/codebuild/amazonlinux-x86_64-standard:5.0", "computeType": "BUILD_GENERAL1_SMALL", "privilegedMode": true}' \
+  --service-role arn:aws:iam::<ACCOUNT_ID>:role/<CODEBUILD_ROLE>
 ```
 
 ## 4. Setup Steps
@@ -70,8 +122,9 @@ phases:
    ```
 
 2. **Create the CodeBuild project** with:
-   - Environment: `aws/codebuild/amazonlinux2-x86_64-standard:5.0`
+   - Environment: `aws/codebuild/amazonlinux-x86_64-standard:5.0` (Amazon Linux 2023)
    - **Privileged mode enabled** (required for Docker builds)
+   - Source type: `NO_SOURCE` (for Option B) or your repo (for Option A)
    - IAM role with permissions for ECR push (`ecr:GetAuthorizationToken`, `ecr:BatchCheckLayerAvailability`, `ecr:PutImage`, `ecr:InitiateLayerUpload`, `ecr:UploadLayerPart`, `ecr:CompleteLayerUpload`)
 
 3. **Create the Lambda function from the image:**
