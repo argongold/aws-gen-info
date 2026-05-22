@@ -2,6 +2,8 @@
 
 Use CodeBuild to build a Docker image that includes `aws-nuke`, push it to ECR, then deploy it as a Lambda function.
 
+![Architecture Diagram](docs/lambda-custom-container-codebuild.png)
+
 ## 1. Dockerfile
 
 ```dockerfile
