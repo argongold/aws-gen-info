@@ -6,6 +6,8 @@ Use CodeBuild to build a Docker image that includes `aws-nuke`, push it to ECR, 
 
 ## 1. Dockerfile
 
+### Option 1: Download from GitHub releases
+
 ```dockerfile
 FROM public.ecr.aws/lambda/provided:al2023
 
@@ -18,6 +20,35 @@ RUN chmod 755 ${LAMBDA_RUNTIME_DIR}/bootstrap
 
 CMD ["handler"]
 ```
+
+### Option 2: Download from S3 bucket
+
+```dockerfile
+FROM public.ecr.aws/lambda/provided:al2023
+
+# Install aws-nuke from S3
+RUN aws s3 cp s3://<BUCKET_NAME>/aws-nuke/aws-nuke-v3.64.4-linux-amd64.tar.gz /tmp/aws-nuke.tar.gz \
+    && tar xz -C /usr/local/bin aws-nuke -f /tmp/aws-nuke.tar.gz \
+    && rm /tmp/aws-nuke.tar.gz
+
+# Copy your Lambda handler (bootstrap script)
+COPY bootstrap ${LAMBDA_RUNTIME_DIR}/bootstrap
+RUN chmod 755 ${LAMBDA_RUNTIME_DIR}/bootstrap
+
+CMD ["handler"]
+```
+
+> **Note:** The CodeBuild service role must have `s3:GetObject` permission on the bucket. The AWS CLI is pre-installed in the CodeBuild environment, so `aws s3 cp` is available during `docker build` if you use a build stage or pass credentials via build args. Alternatively, download the file in the buildspec `pre_build` phase and use `COPY` in the Dockerfile instead:
+>
+> ```yaml
+> # In buildspec pre_build phase:
+> - aws s3 cp s3://<BUCKET_NAME>/aws-nuke/aws-nuke-v3.64.4-linux-amd64.tar.gz aws-nuke.tar.gz
+> ```
+> ```dockerfile
+> # In Dockerfile:
+> COPY aws-nuke.tar.gz /tmp/aws-nuke.tar.gz
+> RUN tar xz -C /usr/local/bin aws-nuke -f /tmp/aws-nuke.tar.gz && rm /tmp/aws-nuke.tar.gz
+> ```
 
 ## 2. bootstrap (Custom Runtime Entry Point)
 
