@@ -43,6 +43,20 @@ aws-nuke run --config /var/task/nuke-config.yaml --no-prompt 2>&1 || true
 
 The `|| true` is useful because some resources may fail to delete due to dependencies or permissions, and you typically don't want that to halt the entire workflow.
 
+## `--no-dry-run` Flag
+
+By default, `--no-dry-run` is **`false`** (dry-run mode is ON). This means aws-nuke will only **list** resources it would delete without actually removing anything. You must explicitly pass `--no-dry-run` to perform actual deletions.
+
+```bash
+# Dry run (default) — just lists resources
+aws-nuke run --config nuke-config.yaml
+
+# Actually delete resources
+aws-nuke run --config nuke-config.yaml --no-dry-run
+```
+
+This is a safety mechanism to prevent accidental resource deletion.
+
 ## References
 
 - [ekristen/aws-nuke releases](https://github.com/ekristen/aws-nuke/releases)
