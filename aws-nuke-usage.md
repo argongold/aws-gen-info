@@ -27,6 +27,22 @@
 
 Use a **container-based Lambda** or a **Fargate task** for running aws-nuke.
 
+## Running aws-nuke in Automation
+
+```bash
+aws-nuke run --config /var/task/nuke-config.yaml --no-prompt 2>&1 || true
+```
+
+| Part | Purpose |
+|------|---------|
+| `aws-nuke run` | Executes aws-nuke to delete all resources in the target AWS account |
+| `--config /var/task/nuke-config.yaml` | Path to the config file defining target accounts, regions, resource types, and filters |
+| `--no-prompt` | Skips interactive confirmation prompts for unattended execution (Lambda, CI/CD) |
+| `2>&1` | Redirects stderr to stdout, combining all output into a single stream for logging |
+| `|| true` | Ensures exit code 0 even if aws-nuke fails, preventing pipeline/script abort on partial failures |
+
+The `|| true` is useful because some resources may fail to delete due to dependencies or permissions, and you typically don't want that to halt the entire workflow.
+
 ## References
 
 - [ekristen/aws-nuke releases](https://github.com/ekristen/aws-nuke/releases)
