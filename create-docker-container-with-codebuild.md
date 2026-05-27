@@ -309,3 +309,68 @@ Setup:
 | Deployment | Instant | Gradual rollout strategies |
 | Caching | Manual | Built-in via Lambda extension |
 | Cost | Free (standard tier) | Per config retrieval |
+
+## Lambda Role Permission and Resource-Based Policy
+
+Since the Lambda directly runs aws-nuke (no cross-account assumption), the Lambda execution role itself needs broad permissions.
+
+### IAM Role Policy
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "NukeResourceDeletion",
+      "Effect": "Allow",
+      "Action": "*",
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+### Trust Policy
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "lambda.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+```
+
+### Securing the Lambda
+
+Since the role has full access, security shifts to **controlling who can invoke the function**:
+
+1. **Restrict invocation** — Use a resource-based policy to limit who/what can trigger the Lambda:
+   ```json
+   {
+     "Sid": "RestrictInvocation",
+     "Effect": "Deny",
+     "Action": "lambda:InvokeFunction",
+     "Resource": "arn:aws:lambda:<REGION>:<ACCOUNT_ID>:function:aws-nuke-function",
+     "Principal": "*",
+     "Condition": {
+       "StringNotEquals": {
+         "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/<TRUSTED_ROLE>"
+       }
+     }
+   }
+   ```
+
+2. **Protect the Lambda and role from modification** — Use an SCP or IAM permissions boundary to prevent changes to the function or its role.
+
+3. **Use nuke-config.yaml filters** — Exclude critical resources (the Lambda itself, its role, VPC, etc.) from deletion.
+
+4. **Only deploy in sandbox/non-production accounts** — Never attach `Action: "*"` to a Lambda role in a production account.
+
+> **Note:** The [AWS Innovation Sandbox solution](https://docs.aws.amazon.com/solutions/latest/innovation-sandbox-on-aws/solution-overview.html) uses the same approach — granting administrative access to the cleanup role — but secures it through restricted trust policies, SCPs, and treating the host account as a highly sensitive asset.
