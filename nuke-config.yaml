@@ -1,0 +1,22 @@
+regions:
+  - eu-west-1
+
+resource-types:
+  excludes:
+    - IAMUser
+
+presets:
+  tagged-protection:
+    filters:
+      __global__:
+        - property: tag:SCP-PLATFOM-ALLOW
+          type: regex
+          value: ".+"
+        - property: tag:core-protection
+          type: regex
+          value: ".+"
+
+accounts:
+  "ACCOUNT_ID":
+    presets:
+      - tagged-protection
