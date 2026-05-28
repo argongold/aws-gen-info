@@ -82,7 +82,7 @@ while true; do
   aws-nuke resource-types 2>&1 | tee /dev/stderr
 
   echo "=== aws-nuke run ==="
-  RESPONSE=$(aws-nuke run --config /var/task/nuke-config.yaml --no-prompt 2>&1 | tee /dev/stderr || true)
+  RESPONSE=$(aws-nuke run --config /var/task/nuke-config.yaml --no-prompt --no-alias-check 2>&1 | tee /dev/stderr || true)
 
   # Send response
   curl -sS -X POST "http://${AWS_LAMBDA_RUNTIME_API}/2018-06-01/runtime/invocation/$REQUEST_ID/response" -d "$RESPONSE"
@@ -193,7 +193,7 @@ phases:
           echo "=== aws-nuke help ===" && aws-nuke -h 2>&1 | tee /dev/stderr
           echo "=== aws-nuke resource-types ===" && aws-nuke resource-types 2>&1 | tee /dev/stderr
           echo "=== aws-nuke run ==="
-          RESPONSE=$(aws-nuke run --config /var/task/nuke-config.yaml --no-prompt 2>&1 | tee /dev/stderr || true)
+          RESPONSE=$(aws-nuke run --config /var/task/nuke-config.yaml --no-prompt --no-alias-check 2>&1 | tee /dev/stderr || true)
           curl -sS -X POST "http://${AWS_LAMBDA_RUNTIME_API}/2018-06-01/runtime/invocation/$REQUEST_ID/response" -d "$RESPONSE"
         done
         EOF
