@@ -76,10 +76,10 @@ while true; do
 
   # Run aws-nuke — stdout/stderr is sent to CloudWatch Logs automatically
   echo "=== aws-nuke help ==="
-  aws-nuke -h 2>&1 | tee /dev/stderr
+  aws-nuke -h
 
   echo "=== aws-nuke resource-types ==="
-  aws-nuke resource-types 2>&1 | tee /dev/stderr
+  aws-nuke resource-types
 
   echo "=== aws-nuke run ==="
   RESPONSE=$(aws-nuke run --config /var/task/nuke-config.yaml --no-prompt --no-alias-check 2>&1 | tee /dev/stderr || true)
@@ -190,8 +190,8 @@ phases:
           HEADERS="$(mktemp)"
           EVENT_DATA=$(curl -sS -LD "$HEADERS" "http://${AWS_LAMBDA_RUNTIME_API}/2018-06-01/runtime/invocation/next")
           REQUEST_ID=$(grep -Fi Lambda-Runtime-Aws-Request-Id "$HEADERS" | tr -d '[:space:]' | cut -d: -f2)
-          echo "=== aws-nuke help ===" && aws-nuke -h 2>&1 | tee /dev/stderr
-          echo "=== aws-nuke resource-types ===" && aws-nuke resource-types 2>&1 | tee /dev/stderr
+          echo "=== aws-nuke help ===" && aws-nuke -h
+          echo "=== aws-nuke resource-types ===" && aws-nuke resource-types
           echo "=== aws-nuke run ==="
           RESPONSE=$(aws-nuke run --config /var/task/nuke-config.yaml --no-prompt --no-alias-check 2>&1 | tee /dev/stderr || true)
           curl -sS -X POST "http://${AWS_LAMBDA_RUNTIME_API}/2018-06-01/runtime/invocation/$REQUEST_ID/response" -d "$RESPONSE"
