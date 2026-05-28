@@ -89,6 +89,54 @@ while true; do
 done
 ```
 
+### Understanding the bootstrap Script
+
+When Lambda runs a custom container with the `provided` runtime, it looks for an executable named `bootstrap` to start your function. There is no built-in language runtime (like Python or Node.js) — your script **is** the runtime.
+
+Here's what each part does:
+
+| Line | Purpose |
+|------|---------|
+| `set -euo pipefail` | Exit on error (`-e`), treat unset variables as errors (`-u`), fail on any pipe failure (`-o pipefail`). Ensures the script doesn't silently continue after failures. |
+| `while true; do` | Keeps the runtime alive between invocations. Lambda reuses the same execution environment for multiple requests (warm starts). |
+| `HEADERS="$(mktemp)"` | Creates a temp file to store HTTP response headers from the Runtime API. |
+| `curl ... /invocation/next` | **Long-polls** the Lambda Runtime API. This call blocks until a new invocation arrives. Lambda provides the `AWS_LAMBDA_RUNTIME_API` environment variable automatically. |
+| `REQUEST_ID=$(grep ...)` | Extracts the unique request ID from the response headers. This ID is required when sending the response back. |
+| `aws-nuke ... \| tee /dev/stderr` | Runs the command and simultaneously streams output to stderr (CloudWatch Logs) while capturing it in `$RESPONSE`. |
+| `|| true` | Prevents the script from exiting if aws-nuke returns a non-zero exit code (which it does when it deletes resources). |
+| `curl ... /invocation/$REQUEST_ID/response` | Sends the function's output back to the Lambda Runtime API, completing the invocation. |
+
+**Flow diagram:**
+
+```
+Lambda invoked
+      │
+      ▼
+┌─────────────────────────┐
+│ curl .../invocation/next │ ◄── blocks until invocation arrives
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│   Extract REQUEST_ID    │
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│   Run aws-nuke commands │ ──► output goes to CloudWatch
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│ POST .../response        │ ──► sends result back to caller
+└────────────┬────────────┘
+             │
+             ▼
+        loop (wait for next invocation)
+```
+
+> **Key point:** If the bootstrap script exits (crashes, unhandled error), Lambda reports an invocation error and may restart the execution environment. The `while true` loop and `|| true` on aws-nuke ensure the runtime stays alive across invocations.
+
 ## 3. File Placement
 
 Since we are not using a source repository, all files (Dockerfile, bootstrap) are created inline during the build. There are two options:
