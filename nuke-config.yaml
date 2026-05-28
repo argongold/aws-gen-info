@@ -1,6 +1,9 @@
 blocklist:
   - "PRODUCTION_ACCOUNT_ID" # account(s) to protect from being nuked
 
+bypass-alias-check-accounts:
+  - "ACCOUNT_ID" # account(s) allowed to skip alias verification
+
 regions:
   - eu-west-1
 
