@@ -1,3 +1,6 @@
+blocklist:
+  - "PRODUCTION_ACCOUNT_ID" # account(s) to protect from being nuked
+
 regions:
   - eu-west-1
 

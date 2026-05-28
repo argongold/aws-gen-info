@@ -4,6 +4,15 @@ Use CodeBuild to build a Docker image that includes `aws-nuke`, push it to ECR, 
 
 ![Architecture Diagram](docs/lambda-custom-container-codebuild.png)
 
+## Prerequisites
+
+- AWS CLI installed and configured
+- Docker installed (for local testing)
+- An ECR repository created in your target region
+- A CodeBuild service role with ECR and CloudWatch Logs permissions
+- A Lambda execution role with permissions for resources aws-nuke will delete
+- A `nuke-config.yaml` file defining which resources to nuke (and which to exclude)
+
 ## 1. Dockerfile
 
 ### Option 1: Download from GitHub releases
@@ -65,8 +74,8 @@ while true; do
   EVENT_DATA=$(curl -sS -LD "$HEADERS" "http://${AWS_LAMBDA_RUNTIME_API}/2018-06-01/runtime/invocation/next")
   REQUEST_ID=$(grep -Fi Lambda-Runtime-Aws-Request-Id "$HEADERS" | tr -d '[:space:]' | cut -d: -f2)
 
-  # Run aws-nuke (customize as needed)
-  RESPONSE=$(aws-nuke run --config /var/task/nuke-config.yaml --no-prompt 2>&1 || true)
+  # Run aws-nuke — stdout/stderr is sent to CloudWatch Logs automatically
+  RESPONSE=$(aws-nuke run --config /var/task/nuke-config.yaml --no-prompt 2>&1 | tee /dev/stderr || true)
 
   # Send response
   curl -sS -X POST "http://${AWS_LAMBDA_RUNTIME_API}/2018-06-01/runtime/invocation/$REQUEST_ID/response" -d "$RESPONSE"
@@ -126,7 +135,7 @@ phases:
           HEADERS="$(mktemp)"
           EVENT_DATA=$(curl -sS -LD "$HEADERS" "http://${AWS_LAMBDA_RUNTIME_API}/2018-06-01/runtime/invocation/next")
           REQUEST_ID=$(grep -Fi Lambda-Runtime-Aws-Request-Id "$HEADERS" | tr -d '[:space:]' | cut -d: -f2)
-          RESPONSE=$(aws-nuke run --config /var/task/nuke-config.yaml --no-prompt 2>&1 || true)
+          RESPONSE=$(aws-nuke run --config /var/task/nuke-config.yaml --no-prompt 2>&1 | tee /dev/stderr || true)
           curl -sS -X POST "http://${AWS_LAMBDA_RUNTIME_API}/2018-06-01/runtime/invocation/$REQUEST_ID/response" -d "$RESPONSE"
         done
         EOF
@@ -142,7 +151,17 @@ Create the project with:
 ```bash
 aws codebuild create-project \
   --name aws-nuke-build \
-  --source '{"type": "NO_SOURCE", "buildspec": "<inline YAML as escaped string>"}' \
+  --source '{"type": "NO_SOURCE", "buildspec": "buildspec.yml"}' \
+  --environment '{"type": "LINUX_CONTAINER", "image": "aws/codebuild/amazonlinux-x86_64-standard:5.0", "computeType": "BUILD_GENERAL1_SMALL", "privilegedMode": true}' \
+  --service-role arn:aws:iam::<ACCOUNT_ID>:role/<CODEBUILD_ROLE>
+```
+
+Alternatively, pass the buildspec as a file using the CLI:
+
+```bash
+aws codebuild create-project \
+  --name aws-nuke-build \
+  --source "$(jq -n --rawfile bs buildspec.yml '{type: "NO_SOURCE", buildspec: $bs}')" \
   --environment '{"type": "LINUX_CONTAINER", "image": "aws/codebuild/amazonlinux-x86_64-standard:5.0", "computeType": "BUILD_GENERAL1_SMALL", "privilegedMode": true}' \
   --service-role arn:aws:iam::<ACCOUNT_ID>:role/<CODEBUILD_ROLE>
 ```
@@ -374,3 +393,24 @@ Since the role has full access, security shifts to **controlling who can invoke 
 4. **Only deploy in sandbox/non-production accounts** — Never attach `Action: "*"` to a Lambda role in a production account.
 
 > **Note:** The [AWS Innovation Sandbox solution](https://docs.aws.amazon.com/solutions/latest/innovation-sandbox-on-aws/solution-overview.html) uses the same approach — granting administrative access to the cleanup role — but secures it through restricted trust policies, SCPs, and treating the host account as a highly sensitive asset.
+
+## Testing Locally
+
+Use the [Lambda Runtime Interface Emulator (RIE)](https://github.com/aws/aws-lambda-runtime-interface-emulator) to test the container image locally before deploying:
+
+```bash
+# Build the image
+docker build -t aws-nuke-lambda .
+
+# Run with RIE (emulates the Lambda Runtime API locally)
+docker run -d -p 9000:8080 \
+  -e AWS_ACCESS_KEY_ID=<KEY> \
+  -e AWS_SECRET_ACCESS_KEY=<SECRET> \
+  -e AWS_DEFAULT_REGION=<REGION> \
+  aws-nuke-lambda
+
+# Invoke the function
+curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{}'
+```
+
+> **Note:** The `provided:al2023` base image includes RIE already. If using a non-AWS base image, you'd need to install it separately.
