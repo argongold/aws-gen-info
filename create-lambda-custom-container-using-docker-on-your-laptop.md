@@ -8,6 +8,68 @@ Build the aws-nuke custom container on your laptop, push to ECR, create the Lamb
 - AWS CLI configured with appropriate permissions
 - Target region: `eu-west-1` (adjust as needed)
 
+## Using a Private ECR Base Image
+
+If your network blocks access to `public.ecr.aws` (e.g., corporate VPN/proxy restrictions), you can mirror the Lambda base image to your private ECR and build from there instead.
+
+### One-time setup: Mirror the base image using CodeBuild
+
+Create a private ECR repo and use CodeBuild to pull the public image and push it to your account:
+
+```bash
+aws ecr create-repository --repository-name lambda-base --region eu-west-1
+```
+
+Inline buildspec for CodeBuild (`NO_SOURCE`):
+
+```yaml
+version: 0.2
+
+env:
+  variables:
+    ACCOUNT_ID: <ACCOUNT_ID>
+    REGION: eu-west-1
+
+phases:
+  pre_build:
+    commands:
+      - aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com
+  build:
+    commands:
+      - docker pull public.ecr.aws/lambda/provided:al2023
+      - docker tag public.ecr.aws/lambda/provided:al2023 $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/lambda-base:al2023
+  post_build:
+    commands:
+      - docker push $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/lambda-base:al2023
+```
+
+### Build locally using the private base image
+
+Authenticate Docker to your private ECR:
+
+```bash
+aws ecr get-login-password --region eu-west-1 | docker login --username AWS --password-stdin <ACCOUNT_ID>.dkr.ecr.eu-west-1.amazonaws.com
+```
+
+Then use this Dockerfile instead (replace the `FROM` line):
+
+```dockerfile
+FROM <ACCOUNT_ID>.dkr.ecr.eu-west-1.amazonaws.com/lambda-base:al2023
+
+RUN curl -sL https://github.com/ekristen/aws-nuke/releases/download/v3.64.4/aws-nuke-v3.64.4-linux-amd64.tar.gz | tar xz -C /usr/local/bin aws-nuke
+
+COPY bootstrap ${LAMBDA_RUNTIME_DIR}/bootstrap
+RUN chmod 755 ${LAMBDA_RUNTIME_DIR}/bootstrap
+
+COPY nuke-config.yaml /var/task/nuke-config.yaml
+
+CMD ["handler"]
+```
+
+The rest of the steps (build, tag, push, create Lambda) remain the same as below.
+
+---
+
 ## Step 1: Create Project Files
 
 ```bash
