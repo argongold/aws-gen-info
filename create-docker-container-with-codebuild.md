@@ -293,9 +293,36 @@ The CodeBuild service role requires the following permissions:
 
 ## Further Improvements
 
-Instead of bundling `nuke-config.yaml` in the container image, you can fetch it at runtime from a managed configuration service.
+Instead of bundling `nuke-config.yaml` in the container image, you can fetch it at runtime from a managed configuration service or S3.
 
-### Option 1: SSM Parameter Store
+> **Note:** To ensure config changes take effect on the very next invocation (not just on cold starts), place the fetch command **inside** the `while true` loop rather than before it.
+
+### Option 1: S3 Bucket
+
+Store the config in S3 and fetch it at runtime:
+
+```bash
+# Fetch nuke config from S3
+aws s3 cp s3://<BUCKET_NAME>/aws-nuke/nuke-config.yaml /tmp/nuke-config.yaml
+```
+
+Upload the config:
+
+```bash
+aws s3 cp nuke-config.yaml s3://<BUCKET_NAME>/aws-nuke/nuke-config.yaml
+```
+
+Lambda role permission required:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": "s3:GetObject",
+  "Resource": "arn:aws:s3:::<BUCKET_NAME>/aws-nuke/nuke-config.yaml"
+}
+```
+
+### Option 2: SSM Parameter Store
 
 Store the config as an SSM parameter and fetch it at cold start in the `bootstrap` script:
 
@@ -329,7 +356,7 @@ Lambda role permission required:
 
 > **Note:** SSM standard parameters have an 8KB size limit. Use Advanced tier for larger configs, or consider AppConfig.
 
-### Option 2: AWS AppConfig
+### Option 3: AWS AppConfig
 
 Use the AppConfig Lambda extension (runs locally on port 2772) for built-in caching, validation, and safe deployments:
 
@@ -379,13 +406,14 @@ Setup:
 
 ### Comparison
 
-| | SSM Parameter Store | AWS AppConfig |
-|---|---|---|
-| Size limit | 8KB (standard) | 1MB |
-| Validation | None | JSON Schema or Lambda validator |
-| Deployment | Instant | Gradual rollout strategies |
-| Caching | Manual | Built-in via Lambda extension |
-| Cost | Free (standard tier) | Per config retrieval |
+| | S3 Bucket | SSM Parameter Store | AWS AppConfig |
+|---|---|---|---|
+| Size limit | 5 GB (object) | 8KB (standard) | 1MB |
+| Validation | None | None | JSON Schema or Lambda validator |
+| Deployment | Instant | Instant | Gradual rollout strategies |
+| Caching | Manual | Manual | Built-in via Lambda extension |
+| Cost | S3 GET pricing | Free (standard tier) | Per config retrieval |
+| Simplicity | Simplest | Simple | More setup |
 
 ## Lambda Role Permission and Resource-Based Policy
 
