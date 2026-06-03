@@ -1,0 +1,78 @@
+{
+    "Version": "2008-10-17",
+    "Statement": [
+        {
+            "Sid": "ForceSSL",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:*",
+            "Resource": [
+                "arn:aws:s3:::BUCKET_NAME-tf-state",
+                "arn:aws:s3:::BUCKET_NAME-tf-state/*"
+            ],
+            "Condition": {
+                "Bool": {
+                    "aws:SecureTransport": "false"
+                }
+            }
+        },
+        {
+            "Sid": "DenyNonSSEPuts",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:Put*",
+            "Resource": "arn:aws:s3:::BUCKET_NAME-tf-state/*",
+            "Condition": {
+                "Null": {
+                    "s3:x-amz-server-side-encryption": "true"
+                }
+            }
+        },
+        {
+            "Sid": "Allow only requests that use Authorization header for request authentication. Deny POST or presigned URL requests. ",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:GetObject",
+            "Resource": "arn:aws:s3:::BUCKET_NAME-tf-state/*",
+            "Condition": {
+                "StringNotEquals": {
+                    "s3:authType": "REST-HEADER"
+                }
+            }
+        },
+        {
+            "Sid": "Deny anonymous including public ACL when principal type is not present",
+            "Effect": "Deny",
+            "Principal": {
+                "AWS": "*"
+            },
+            "Action": "s3:*",
+            "Resource": [
+                "arn:aws:s3:::BUCKET_NAME-tf-state",
+                "arn:aws:s3:::BUCKET_NAME-tf-state/*"
+            ],
+            "Condition": {
+                "Null": {
+                    "aws:principaltype": "true"
+                }
+            }
+        },
+        {
+            "Sid": "Deny anonymous including public ACL when principal type is present and set to anonymous",
+            "Effect": "Deny",
+            "Principal": {
+                "AWS": "*"
+            },
+            "Action": "s3:*",
+            "Resource": [
+                "arn:aws:s3:::BUCKET_NAME-tf-state",
+                "arn:aws:s3:::BUCKET_NAME-tf-state/*"
+            ],
+            "Condition": {
+                "StringLike": {
+                    "aws:principaltype": "Anonymous"
+                }
+            }
+        }
+    ]
+}
