@@ -20,7 +20,8 @@ Use CodeBuild to build a Docker image that includes `aws-nuke`, push it to ECR, 
 ```dockerfile
 FROM public.ecr.aws/lambda/provided:al2023
 
-# Install aws-nuke
+# Install jq (required for parsing event payload) and aws-nuke
+RUN dnf install -y jq && dnf clean all
 RUN curl -sL https://github.com/ekristen/aws-nuke/releases/download/v3.64.4/aws-nuke-v3.64.4-linux-amd64.tar.gz | tar xz -C /usr/local/bin aws-nuke
 
 # Copy your Lambda handler (bootstrap script)
@@ -34,6 +35,9 @@ CMD ["handler"]
 
 ```dockerfile
 FROM public.ecr.aws/lambda/provided:al2023
+
+# Install jq (required for parsing event payload)
+RUN dnf install -y jq && dnf clean all
 
 # Install aws-nuke from S3
 RUN aws s3 cp s3://<BUCKET_NAME>/aws-nuke/aws-nuke-v3.64.4-linux-amd64.tar.gz /tmp/aws-nuke.tar.gz \
@@ -61,7 +65,9 @@ CMD ["handler"]
 
 ## 2. bootstrap (Custom Runtime Entry Point)
 
-The `bootstrap` script is executed when the Lambda execution environment starts. It runs a loop that polls the Lambda Runtime API for invocations:
+The `bootstrap` script is executed when the Lambda execution environment starts. It runs a loop that polls the Lambda Runtime API for invocations.
+
+The script reads the invocation event payload to determine whether to run in **dry-run** (default) or **no-dry-run** mode. Pass `{"no_dry_run": true}` in the event to perform actual deletion:
 
 ```bash
 #!/bin/bash
@@ -74,15 +80,17 @@ while true; do
   EVENT_DATA=$(curl -sS -LD "$HEADERS" "http://${AWS_LAMBDA_RUNTIME_API}/2018-06-01/runtime/invocation/next")
   REQUEST_ID=$(grep -Fi Lambda-Runtime-Aws-Request-Id "$HEADERS" | tr -d '[:space:]' | cut -d: -f2)
 
-  # Run aws-nuke — stdout/stderr is sent to CloudWatch Logs automatically
-  echo "=== aws-nuke help ==="
-  aws-nuke -h
+  # Parse event payload for no_dry_run flag (defaults to "false" if not provided)
+  NO_DRY_RUN=$(echo "$EVENT_DATA" | jq -r '.no_dry_run // "false"')
 
-  echo "=== aws-nuke resource-types ==="
-  aws-nuke resource-types
+  # Build aws-nuke command
+  NUKE_CMD="aws-nuke run --config /var/task/nuke-config.yaml --no-prompt --no-alias-check"
+  if [ "$NO_DRY_RUN" = "true" ]; then
+    NUKE_CMD="$NUKE_CMD --no-dry-run"
+  fi
 
-  echo "=== aws-nuke run ==="
-  RESPONSE=$(aws-nuke run --config /var/task/nuke-config.yaml --no-prompt --no-alias-check 2>&1 | tee /dev/stderr || true)
+  echo "=== aws-nuke run (no_dry_run=$NO_DRY_RUN) ==="
+  RESPONSE=$($NUKE_CMD 2>&1 | tee /dev/stderr || true)
 
   # Send response
   curl -sS -X POST "http://${AWS_LAMBDA_RUNTIME_API}/2018-06-01/runtime/invocation/$REQUEST_ID/response" -d "$RESPONSE"
@@ -102,6 +110,8 @@ Here's what each part does:
 | `HEADERS="$(mktemp)"` | Creates a temp file to store HTTP response headers from the Runtime API. |
 | `curl ... /invocation/next` | **Long-polls** the Lambda Runtime API. This call blocks until a new invocation arrives. Lambda provides the `AWS_LAMBDA_RUNTIME_API` environment variable automatically. |
 | `REQUEST_ID=$(grep ...)` | Extracts the unique request ID from the response headers. This ID is required when sending the response back. |
+| `NO_DRY_RUN=$(echo ... \| jq ...)` | Parses the event payload JSON to extract the `no_dry_run` field. Defaults to `"false"` if the field is missing or the payload is empty `{}`. |
+| `if [ "$NO_DRY_RUN" = "true" ]` | Conditionally appends `--no-dry-run` to the aws-nuke command only when explicitly requested. |
 | `aws-nuke ... \| tee /dev/stderr` | Runs the command and simultaneously streams output to stderr (CloudWatch Logs) while capturing it in `$RESPONSE`. |
 | `|| true` | Prevents the script from exiting if aws-nuke returns a non-zero exit code (which it does when it deletes resources). |
 | `curl ... /invocation/$REQUEST_ID/response` | Sends the function's output back to the Lambda Runtime API, completing the invocation. |
@@ -109,7 +119,7 @@ Here's what each part does:
 **Flow diagram:**
 
 ```
-Lambda invoked
+Lambda invoked (with event payload)
       │
       ▼
 ┌─────────────────────────┐
@@ -123,7 +133,20 @@ Lambda invoked
              │
              ▼
 ┌─────────────────────────┐
-│   Run aws-nuke commands │ ──► output goes to CloudWatch
+│ Parse no_dry_run from   │
+│ event payload (jq)      │
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│ Build aws-nuke command  │
+│ (append --no-dry-run    │
+│  only if true)          │
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│   Run aws-nuke          │ ──► output goes to CloudWatch
 └────────────┬────────────┘
              │
              ▼
@@ -176,6 +199,7 @@ phases:
       - |
         cat > Dockerfile <<'EOF'
         FROM public.ecr.aws/lambda/provided:al2023
+        RUN dnf install -y jq && dnf clean all
         RUN curl -sL https://github.com/ekristen/aws-nuke/releases/download/v3.64.4/aws-nuke-v3.64.4-linux-amd64.tar.gz | tar xz -C /usr/local/bin aws-nuke
         COPY bootstrap ${LAMBDA_RUNTIME_DIR}/bootstrap
         RUN chmod 755 ${LAMBDA_RUNTIME_DIR}/bootstrap
@@ -190,10 +214,13 @@ phases:
           HEADERS="$(mktemp)"
           EVENT_DATA=$(curl -sS -LD "$HEADERS" "http://${AWS_LAMBDA_RUNTIME_API}/2018-06-01/runtime/invocation/next")
           REQUEST_ID=$(grep -Fi Lambda-Runtime-Aws-Request-Id "$HEADERS" | tr -d '[:space:]' | cut -d: -f2)
-          echo "=== aws-nuke help ===" && aws-nuke -h
-          echo "=== aws-nuke resource-types ===" && aws-nuke resource-types
-          echo "=== aws-nuke run ==="
-          RESPONSE=$(aws-nuke run --config /var/task/nuke-config.yaml --no-prompt --no-alias-check 2>&1 | tee /dev/stderr || true)
+          NO_DRY_RUN=$(echo "$EVENT_DATA" | jq -r '.no_dry_run // "false"')
+          NUKE_CMD="aws-nuke run --config /var/task/nuke-config.yaml --no-prompt --no-alias-check"
+          if [ "$NO_DRY_RUN" = "true" ]; then
+            NUKE_CMD="$NUKE_CMD --no-dry-run"
+          fi
+          echo "=== aws-nuke run (no_dry_run=$NO_DRY_RUN) ==="
+          RESPONSE=$($NUKE_CMD 2>&1 | tee /dev/stderr || true)
           curl -sS -X POST "http://${AWS_LAMBDA_RUNTIME_API}/2018-06-01/runtime/invocation/$REQUEST_ID/response" -d "$RESPONSE"
         done
         EOF
@@ -495,8 +522,86 @@ docker run -d -p 9000:8080 \
   -e AWS_DEFAULT_REGION=<REGION> \
   aws-nuke-lambda
 
-# Invoke the function
+# Invoke — dry-run (default)
 curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{}'
+
+# Invoke — actual deletion
+curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{"no_dry_run": true}'
 ```
 
 > **Note:** The `provided:al2023` base image includes RIE already. If using a non-AWS base image, you'd need to install it separately.
+
+## Invoking the Lambda
+
+The single container supports both dry-run and actual deletion modes via the event payload.
+
+### AWS CLI
+
+```bash
+# Dry-run (default — safe, no resources deleted)
+aws lambda invoke \
+  --function-name aws-nuke-function \
+  --payload '{}' \
+  --cli-binary-format raw-in-base64-out \
+  out.json
+
+# Actual deletion
+aws lambda invoke \
+  --function-name aws-nuke-function \
+  --payload '{"no_dry_run": true}' \
+  --cli-binary-format raw-in-base64-out \
+  out.json
+```
+
+### Step Functions
+
+Use the Lambda as a task in a state machine. The `Parameters` field maps directly to the event payload:
+
+```json
+{
+  "Comment": "aws-nuke cleanup workflow",
+  "StartAt": "DryRun",
+  "States": {
+    "DryRun": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:<REGION>:<ACCOUNT_ID>:function:aws-nuke-function",
+        "Payload": {
+          "no_dry_run": false
+        }
+      },
+      "ResultPath": "$.dry_run_result",
+      "Next": "ApproveNuke"
+    },
+    "ApproveNuke": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.approve",
+          "BooleanEquals": true,
+          "Next": "ActualNuke"
+        }
+      ],
+      "Default": "Done"
+    },
+    "ActualNuke": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:<REGION>:<ACCOUNT_ID>:function:aws-nuke-function",
+        "Payload": {
+          "no_dry_run": true
+        }
+      },
+      "ResultPath": "$.nuke_result",
+      "Next": "Done"
+    },
+    "Done": {
+      "Type": "Succeed"
+    }
+  }
+}
+```
+
+> **Note:** The Step Functions execution role needs `lambda:InvokeFunction` permission on the aws-nuke Lambda function.
