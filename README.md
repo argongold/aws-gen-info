@@ -7,3 +7,4 @@
 - [Create Lambda Custom Container Using Docker on Your Laptop](create-lambda-custom-container-using-docker-on-your-laptop.md)
 - [Download Latest aws-nuke](download-aws-nuke.md)
 - [Terraform S3 Bucket Policies](tf-s3-bucket-policies)
+- [Python Lambda Invoke with Time Estimate](python-time-estimate.py)
