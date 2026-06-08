@@ -9,3 +9,4 @@
 - [Terraform S3 Bucket Policies](tf-s3-bucket-policies)
 - [Python Lambda Invoke with Time Estimate](python-time-estimate.py)
 - [AWS Resources Deletion Timings](aws-resources-delete-timings.md)
+- [Implementing Resource Deletion with aws-nuke](implementing-resource-deletion-with-aws-nuke.md)
