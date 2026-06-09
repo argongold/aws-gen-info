@@ -114,6 +114,8 @@ settings:
 
 Otherwise these resources will fail on every retry.
 
+See the full list of all 22 settings-capable resources: [aws-nuke Settings-Capable Resources](settings-capable-resources.md)
+
 ---
 
 ## Improved Architecture
