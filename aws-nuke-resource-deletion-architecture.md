@@ -180,15 +180,16 @@ The Lambda event payload (from Step Functions) includes the target role ARN. The
 EventBridge (target account event)
     → Step Functions (service catalog account)
         → Step 1: Validate target account (is it in the OU? not in blocklist?)
-        → Step 2: Assume role in target account, discover active regions
-        → Step 3: Map state — fan out Lambda per active region
-            - us-east-1 Lambda: handles global + regional resources
-            - Other Lambdas: regional resources only
-        → Step 4: Collect results
+        → Step 2: Discover active regions in target account
+        → Step 3: Map state — fan out Lambda per active region (all in service catalog account)
+            - us-east-1 Lambda: assumes role in target, handles global + us-east-1 resources
+            - Other Lambdas: assumes role in target, handles their region only
+        → Step 4: Collect results, update DynamoDB state table
         → Step 5: Choice state
-            - All complete → SNS success
-            - Resources remaining + retries < max → Wait 30 min → Go to Step 3
-            - Resources remaining + retries >= max → SNS failure (with details)
+            - All regions complete → SNS success
+            - Resources remaining + retries < 5 + progress detected → Wait 30 min → Go to Step 3
+            - No progress between runs → SNS failure (stuck resources)
+            - Resources remaining + retries >= 5 → SNS failure (with details per region)
 ```
 
 ### Key Additions
@@ -196,7 +197,10 @@ EventBridge (target account event)
 - **Account validation step** — prevents nuking the wrong account
 - **Active region discovery** — only invoke Lambdas in regions that have resources
 - **Structured Lambda response** — enables intelligent retry decisions
-- **Separate global vs regional config** — avoids conflicts
+- **Separate global vs regional config** — us-east-1 uses `regions: [global, us-east-1]`, others use their own region only
+- **DynamoDB state tracking** — Step Functions updates run count and status per region after each cycle
+- **Cross-account via aws-nuke** — Lambdas use `--assume-role` flag (no manual STS calls needed)
+- **No-progress early termination** — fails early if resources are stuck rather than exhausting all retries
 
 ---
 
