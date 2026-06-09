@@ -41,14 +41,14 @@ Step Functions assumes a role in the target account, but the Lambdas run in the 
 
 **Fix:** Pass the target account's role ARN in the Lambda event payload. The bootstrap/aws-nuke config should use that role via `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` (from STS assume-role) or configure aws-nuke's built-in account credential support.
 
-### 4. ECR Replication Timing
+### 4. Deployment Model (Centralized in Service Catalog Account)
 
-Clarify the deployment model:
+The entire solution is deployed in the service catalog account:
 
-- **Option A:** Lambdas in service catalog account, assume role into target account → no ECR replication needed to member accounts, just replicate across regions in the service catalog account.
-- **Option B:** Lambdas deployed in each member account → needs ECR replication to member accounts + Lambda deployment in each account.
-
-Option A is simpler for a centralized orchestration model.
+- **ECR:** Single repo with cross-region replication to all enabled regions (so each regional Lambda pulls from a local ECR endpoint)
+- **Lambdas:** Deployed in all enabled regions within the service catalog account
+- **Cross-account access:** Each Lambda assumes a role in the target account to perform resource deletion
+- **No member account deployment needed** — keeps infrastructure management centralized and avoids deploying/maintaining Lambdas across the Organization
 
 ### 5. 3-Retry Limit May Not Be Enough
 
@@ -59,15 +59,32 @@ Some resources take 30+ minutes to delete (CloudFront, RDS, KMS pending deletion
 - Distinguish between "resources actively deleting" (keep retrying) vs "nothing changed between runs" (likely stuck, fail early)
 - Differentiate resources in pending-deletion state (KMS, Secrets Manager) — these can't be fixed by retrying
 
-### 6. No DynamoDB/State Tracking
+### 6. State Tracking with DynamoDB
 
-If the Step Function fails mid-execution (service issue, timeout), you have no record of what was attempted.
+A single-region DynamoDB table (same region as Step Functions) tracks execution state. Step Functions updates the table after each retry cycle — Lambdas simply return their status.
 
-**Fix:** Consider a DynamoDB table tracking:
-- Target account ID
-- Execution timestamp
-- Per-region status
-- Final outcome
+**Table schema:**
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `AccountId` | PK (String) | Target account being nuked |
+| `Region` | SK (String) | AWS region (e.g., `us-east-1`) |
+| `ExecutionId` | String | Step Functions execution ARN |
+| `RunCount` | Number | Number of deletion cycles completed for this region |
+| `Status` | String | `in_progress` \| `complete` \| `failed` \| `resources_remaining` |
+| `RemainingCount` | Number | Resources still pending deletion |
+| `LastUpdated` | String | ISO timestamp of last update |
+
+**Why single-region (not global table):**
+- Step Functions is the sole writer/reader — no multi-region access pattern
+- Lambdas report status back via their response, not by writing to DynamoDB directly
+- Avoids cost and conflict resolution overhead of global tables
+
+**Flow:**
+1. Step Functions starts execution → writes initial rows (one per region, RunCount=0)
+2. Lambdas execute and return structured response
+3. Step Functions updates `RunCount`, `Status`, `RemainingCount` per region
+4. Choice state reads aggregated status to decide: retry, succeed, or fail
 
 ### 7. EventBridge Event Schema
 
