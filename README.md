@@ -11,3 +11,4 @@
 - [AWS Resources Deletion Timings](aws-resources-delete-timings.md)
 - [Implementing Resource Deletion with aws-nuke](implementing-resource-deletion-with-aws-nuke.md)
 - [aws-nuke Settings-Capable Resources](settings-capable-resources.md)
+- [AWS Nuke Resource Deletion Architecture](aws-nuke-resource-deletion-architecture.md)
