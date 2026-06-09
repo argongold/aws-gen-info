@@ -132,6 +132,46 @@ Otherwise these resources will fail on every retry.
 
 See the full list of all 22 settings-capable resources: [aws-nuke Settings-Capable Resources](settings-capable-resources.md)
 
+### 9. Cross-Account Execution (aws-nuke v3 Built-in Support)
+
+aws-nuke v3 (ekristen/aws-nuke) natively supports cross-account role assumption — no manual `sts assume-role` needed.
+
+**Requirements:**
+
+1. **Target account** has a role (e.g., `NukeExecutionRole`) with:
+   - `AdministratorAccess` policy (aws-nuke needs broad permissions)
+   - Trust policy allowing the Lambda execution role in the service catalog account to assume it
+
+2. **Lambda execution role** in the service catalog account has `sts:AssumeRole` permission on the target role
+
+**Usage in bootstrap (CLI flag):**
+```bash
+aws-nuke run --assume-role arn:aws:iam::TARGET_ACCOUNT_ID:role/NukeExecutionRole \
+  --config /var/task/nuke-config.yaml --no-prompt --no-dry-run 2>&1
+```
+
+**Usage via environment variable:**
+```bash
+export AWS_ASSUME_ROLE=arn:aws:iam::TARGET_ACCOUNT_ID:role/NukeExecutionRole
+aws-nuke run --config /var/task/nuke-config.yaml --no-prompt --no-dry-run 2>&1
+```
+
+**All supported auth options (v3):**
+
+| Method | CLI Flag | Environment Variable |
+|--------|----------|---------------------|
+| Assume Role ARN | `--assume-role` | `AWS_ASSUME_ROLE` |
+| Session Name | `--assume-role-session-name` | `AWS_ASSUME_ROLE_SESSION_NAME` |
+| External ID | `--assume-role-external-id` | `AWS_ASSUME_ROLE_EXTERNAL_ID` |
+| Profile | `--profile` | `AWS_PROFILE` |
+| Region | `--region` | `AWS_REGION` |
+
+**Recommended approach for this architecture:**
+
+The Lambda event payload (from Step Functions) includes the target role ARN. The bootstrap script extracts it and sets `AWS_ASSUME_ROLE` before running aws-nuke. This keeps credentials handling clean — aws-nuke manages the STS call internally via the AWS SDK.
+
+**Note:** STS session token expiry is not a concern here since Lambda's max timeout (15 min) is well within the default 1-hour session duration.
+
 ---
 
 ## Improved Architecture
