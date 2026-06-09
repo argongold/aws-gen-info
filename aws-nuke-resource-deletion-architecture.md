@@ -20,11 +20,27 @@ Use aws-nuke from Lambda containers in all regions, orchestrated by Step Functio
 
 ## What's Missing or Needs Attention
 
-### 1. Global Resources Conflict
+### 1. Global Resources Handling
 
-IAM, Route 53, S3 buckets, CloudFront are global or us-east-1-specific. If all regional Lambdas try to delete IAM roles simultaneously, you'll get conflicts.
+IAM, Route 53, S3 buckets, and CloudFront distributions are global or us-east-1-specific. If all regional Lambdas try to delete these simultaneously, you'll get conflicts.
 
-**Fix:** Designate `us-east-1` Lambda as the global resource handler. Other regional Lambdas should use a config with `resource-types.excludes` for global resources.
+**Approach:**
+
+- **us-east-1 Lambda:** Handles both global resources AND local us-east-1 resources. Its `nuke-config.yaml` uses `regions: [global, us-east-1]`.
+- **All other regional Lambdas:** Each Lambda's `nuke-config.yaml` contains only its own region (e.g., `regions: [eu-west-1]`), so global resources are never touched.
+
+**Example — us-east-1 config:**
+```yaml
+regions:
+  - global
+  - us-east-1
+```
+
+**Example — any other region (e.g., eu-west-1):**
+```yaml
+regions:
+  - eu-west-1
+```
 
 ### 2. Lambda 15-Minute Timeout
 
