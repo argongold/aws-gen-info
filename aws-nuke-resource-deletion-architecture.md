@@ -1,5 +1,7 @@
 # AWS Nuke Resource Deletion Architecture
 
+![AWS Nuke Resource Deletion Architecture](docs/aws-nuke-resource-deletion-architecture.drawio.png)
+
 ## Overview
 
 Use aws-nuke from Lambda containers in all regions, orchestrated by Step Functions, triggered by EventBridge for a specific target account. The state machine fans out regional Lambdas in parallel, retries until all resources are deleted, and sends SNS notifications on completion.
