@@ -175,38 +175,54 @@
         </mxCell>
 
         <!-- Step Functions to Lambda us-east-1 -->
-        <mxCell id="edge-sf-to-lambda1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Helvetica;strokeWidth=2;strokeColor=#ED7100;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="account-svc-catalog" source="svc-stepfunctions" target="svc-lambda-useast1">
+        <mxCell id="edge-sf-to-lambda1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Helvetica;strokeWidth=2;strokeColor=#ED7100;exitX=1;exitY=0.33;exitDx=0;exitDy=0;entryX=0;entryY=0.17;entryDx=0;entryDy=0;" edge="1" parent="account-svc-catalog" source="svc-stepfunctions" target="svc-lambda-useast1">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="430" y="259" />
-              <mxPoint x="430" y="20" />
-              <mxPoint x="700" y="20" />
+              <mxPoint x="438" y="251" />
+              <mxPoint x="438" y="168" />
+              <mxPoint x="660" y="168" />
+              <mxPoint x="660" y="78" />
             </Array>
           </mxGeometry>
         </mxCell>
 
         <!-- Step Functions to Lambda eu-west-1 -->
-        <mxCell id="edge-sf-to-lambda2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Helvetica;strokeWidth=2;strokeColor=#ED7100;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="account-svc-catalog" source="svc-stepfunctions" target="svc-lambda-euwest1">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-sf-to-lambda2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Helvetica;strokeWidth=2;strokeColor=#ED7100;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.17;entryDx=0;entryDy=0;" edge="1" parent="account-svc-catalog" source="svc-stepfunctions" target="svc-lambda-euwest1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="446" y="259" />
+              <mxPoint x="446" y="218" />
+            </Array>
+          </mxGeometry>
         </mxCell>
 
         <!-- Step Functions to Lambda ap-southeast-1 -->
-        <mxCell id="edge-sf-to-lambda3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Helvetica;strokeWidth=2;strokeColor=#ED7100;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="account-svc-catalog" source="svc-stepfunctions" target="svc-lambda-apsouth1">
+        <mxCell id="edge-sf-to-lambda3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Helvetica;strokeWidth=2;strokeColor=#ED7100;exitX=1;exitY=0.67;exitDx=0;exitDy=0;entryX=0;entryY=0.17;entryDx=0;entryDy=0;" edge="1" parent="account-svc-catalog" source="svc-stepfunctions" target="svc-lambda-apsouth1">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="430" y="259" />
-              <mxPoint x="430" y="374" />
+              <mxPoint x="454" y="267" />
+              <mxPoint x="454" y="358" />
             </Array>
           </mxGeometry>
         </mxCell>
 
         <!-- SSM to Lambda us-east-1 -->
-        <mxCell id="edge-ssm-to-lambda1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Helvetica;strokeWidth=1.5;strokeColor=#666666;dashed=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="account-svc-catalog" source="svc-ssm" target="svc-lambda-useast1">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-ssm-to-lambda1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Helvetica;strokeWidth=1.5;strokeColor=#666666;dashed=1;exitX=1;exitY=0.33;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="account-svc-catalog" source="svc-ssm" target="svc-lambda-useast1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="620" y="92" />
+              <mxPoint x="620" y="94" />
+            </Array>
+          </mxGeometry>
         </mxCell>
         <!-- SSM to Lambda eu-west-1 -->
         <mxCell id="edge-ssm-to-lambda2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Helvetica;strokeWidth=1.5;strokeColor=#666666;dashed=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="account-svc-catalog" source="svc-ssm" target="svc-lambda-euwest1">
-          <mxGeometry relative="1" as="geometry" />
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="628" y="100" />
+              <mxPoint x="628" y="234" />
+            </Array>
+          </mxGeometry>
         </mxCell>
         <mxCell id="edge-ssm-to-lambda2-label" value="fetch config" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=none;fontSize=11;fontFamily=Helvetica;" connectable="0" vertex="1" parent="edge-ssm-to-lambda2">
           <mxGeometry relative="1" x="0" y="-15" as="geometry">
@@ -214,17 +230,32 @@
           </mxGeometry>
         </mxCell>
         <!-- SSM to Lambda ap-southeast-1 -->
-        <mxCell id="edge-ssm-to-lambda3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Helvetica;strokeWidth=1.5;strokeColor=#666666;dashed=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="account-svc-catalog" source="svc-ssm" target="svc-lambda-apsouth1">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-ssm-to-lambda3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Helvetica;strokeWidth=1.5;strokeColor=#666666;dashed=1;exitX=1;exitY=0.67;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="account-svc-catalog" source="svc-ssm" target="svc-lambda-apsouth1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="636" y="108" />
+              <mxPoint x="636" y="374" />
+            </Array>
+          </mxGeometry>
         </mxCell>
 
         <!-- ECR to Lambda us-east-1 -->
-        <mxCell id="edge-ecr-to-lambda1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Helvetica;strokeWidth=1.5;strokeColor=#666666;dashed=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="account-svc-catalog" source="svc-ecr" target="svc-lambda-useast1">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-ecr-to-lambda1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Helvetica;strokeWidth=1.5;strokeColor=#666666;dashed=1;exitX=0;exitY=0.33;exitDx=0;exitDy=0;entryX=1;entryY=0.33;entryDx=0;entryDy=0;" edge="1" parent="account-svc-catalog" source="svc-ecr" target="svc-lambda-useast1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="900" y="86" />
+              <mxPoint x="900" y="86" />
+            </Array>
+          </mxGeometry>
         </mxCell>
         <!-- ECR to Lambda eu-west-1 -->
-        <mxCell id="edge-ecr-to-lambda2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Helvetica;strokeWidth=1.5;strokeColor=#666666;dashed=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="account-svc-catalog" source="svc-ecr" target="svc-lambda-euwest1">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-ecr-to-lambda2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Helvetica;strokeWidth=1.5;strokeColor=#666666;dashed=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.33;entryDx=0;entryDy=0;" edge="1" parent="account-svc-catalog" source="svc-ecr" target="svc-lambda-euwest1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="908" y="94" />
+              <mxPoint x="908" y="226" />
+            </Array>
+          </mxGeometry>
         </mxCell>
         <mxCell id="edge-ecr-to-lambda2-label" value="container image" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=none;fontSize=11;fontFamily=Helvetica;" connectable="0" vertex="1" parent="edge-ecr-to-lambda2">
           <mxGeometry relative="1" x="0" y="-15" as="geometry">
@@ -232,13 +263,23 @@
           </mxGeometry>
         </mxCell>
         <!-- ECR to Lambda ap-southeast-1 -->
-        <mxCell id="edge-ecr-to-lambda3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Helvetica;strokeWidth=1.5;strokeColor=#666666;dashed=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="account-svc-catalog" source="svc-ecr" target="svc-lambda-apsouth1">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-ecr-to-lambda3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Helvetica;strokeWidth=1.5;strokeColor=#666666;dashed=1;exitX=0;exitY=0.67;exitDx=0;exitDy=0;entryX=1;entryY=0.33;entryDx=0;entryDy=0;" edge="1" parent="account-svc-catalog" source="svc-ecr" target="svc-lambda-apsouth1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="916" y="102" />
+              <mxPoint x="916" y="366" />
+            </Array>
+          </mxGeometry>
         </mxCell>
 
         <!-- Lambda us-east-1 to Target X (assume role) -->
-        <mxCell id="edge-lambda1-to-targetx" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Helvetica;strokeWidth=2;strokeColor=#DD344C;" edge="1" parent="1" source="svc-lambda-useast1" target="svc-iam-role-x">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-lambda1-to-targetx" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Helvetica;strokeWidth=2;strokeColor=#DD344C;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.33;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="svc-lambda-useast1" target="svc-iam-role-x">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="824" y="650" />
+              <mxPoint x="868" y="650" />
+            </Array>
+          </mxGeometry>
         </mxCell>
         <mxCell id="edge-lambda1-to-targetx-label" value="sts:AssumeRole" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=none;fontSize=11;fontFamily=Helvetica;fontStyle=2;" connectable="0" vertex="1" parent="edge-lambda1-to-targetx">
           <mxGeometry relative="1" x="0" y="0" as="geometry">
@@ -247,13 +288,23 @@
         </mxCell>
 
         <!-- Lambda eu-west-1 to Target X (assume role) -->
-        <mxCell id="edge-lambda2-to-targetx" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Helvetica;strokeWidth=2;strokeColor=#DD344C;" edge="1" parent="1" source="svc-lambda-euwest1" target="svc-iam-role-x">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-lambda2-to-targetx" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Helvetica;strokeWidth=2;strokeColor=#DD344C;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="svc-lambda-euwest1" target="svc-iam-role-x">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="824" y="658" />
+              <mxPoint x="876" y="658" />
+            </Array>
+          </mxGeometry>
         </mxCell>
 
         <!-- Lambda ap-southeast-1 to Target X (assume role) -->
-        <mxCell id="edge-lambda3-to-targetx" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Helvetica;strokeWidth=2;strokeColor=#DD344C;" edge="1" parent="1" source="svc-lambda-apsouth1" target="svc-iam-role-x">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-lambda3-to-targetx" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Helvetica;strokeWidth=2;strokeColor=#DD344C;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.67;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="svc-lambda-apsouth1" target="svc-iam-role-x">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="824" y="666" />
+              <mxPoint x="884" y="666" />
+            </Array>
+          </mxGeometry>
         </mxCell>
         <mxCell id="edge-lambda3-to-targetx-label" value="sts:AssumeRole" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=none;fontSize=11;fontFamily=Helvetica;fontStyle=2;" connectable="0" vertex="1" parent="edge-lambda3-to-targetx">
           <mxGeometry relative="1" x="0" y="0" as="geometry">
@@ -262,12 +313,22 @@
         </mxCell>
 
         <!-- IAM Role X to Resources X1 -->
-        <mxCell id="edge-role-to-resources-x1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Helvetica;strokeWidth=2;strokeColor=#DD344C;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="account-target-x" source="svc-iam-role-x" target="resources-x1">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-role-to-resources-x1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Helvetica;strokeWidth=2;strokeColor=#DD344C;exitX=1;exitY=0.33;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="account-target-x" source="svc-iam-role-x" target="resources-x1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="200" y="176" />
+              <mxPoint x="200" y="75" />
+            </Array>
+          </mxGeometry>
         </mxCell>
         <!-- IAM Role X to Resources X2 -->
         <mxCell id="edge-role-to-resources-x2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Helvetica;strokeWidth=2;strokeColor=#DD344C;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="account-target-x" source="svc-iam-role-x" target="resources-x2">
-          <mxGeometry relative="1" as="geometry" />
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="208" y="184" />
+              <mxPoint x="208" y="165" />
+            </Array>
+          </mxGeometry>
         </mxCell>
         <mxCell id="edge-role-to-resources-x2-label" value="delete resources" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=none;fontSize=11;fontFamily=Helvetica;" connectable="0" vertex="1" parent="edge-role-to-resources-x2">
           <mxGeometry relative="1" x="0" y="-15" as="geometry">
@@ -275,8 +336,13 @@
           </mxGeometry>
         </mxCell>
         <!-- IAM Role X to Resources X3 -->
-        <mxCell id="edge-role-to-resources-x3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Helvetica;strokeWidth=2;strokeColor=#DD344C;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="account-target-x" source="svc-iam-role-x" target="resources-x3">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-role-to-resources-x3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Helvetica;strokeWidth=2;strokeColor=#DD344C;exitX=1;exitY=0.67;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="account-target-x" source="svc-iam-role-x" target="resources-x3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="216" y="192" />
+              <mxPoint x="216" y="255" />
+            </Array>
+          </mxGeometry>
         </mxCell>
 
 
