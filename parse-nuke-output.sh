@@ -11,4 +11,6 @@ SKIPPED=$(echo "$SCAN_LINE" | awk '{print $9}')
 
 RESOURCES=$(grep -E "would remove|removed" "$FILE" | awk -F" - " '{gsub(/'\''/, "", $3); print $3}' | jq -R . | jq -s .)
 
-echo "{\"total\": $TOTAL, \"nukeable\": $NUKEABLE, \"filtered\": $FILTERED, \"skipped\": $SKIPPED, \"resources\": $RESOURCES}" | jq .
+JSON_OUTPUT=$(echo "{\"total\": $TOTAL, \"nukeable\": $NUKEABLE, \"filtered\": $FILTERED, \"skipped\": $SKIPPED, \"resources\": $RESOURCES}" | jq .)
+
+echo "$JSON_OUTPUT"
