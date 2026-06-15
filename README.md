@@ -12,3 +12,4 @@
 - [Implementing Resource Deletion with aws-nuke](implementing-resource-deletion-with-aws-nuke.md)
 - [aws-nuke Settings-Capable Resources](settings-capable-resources.md)
 - [AWS Nuke Resource Deletion Architecture](aws-nuke-resource-deletion-architecture.md)
+- [Parse aws-nuke Output to JSON](parse-nuke-output.sh)
