@@ -9,7 +9,7 @@
         <mxCell id="title-group" connectable="0" style="group;fontFamily=Helvetica;" value="" vertex="1" parent="1">
           <mxGeometry height="83" width="1400" x="50" y="30" as="geometry" />
         </mxCell>
-        <mxCell id="title-text" style="text;html=1;resizable=1;points=[];autosize=1;align=left;verticalAlign=top;spacingTop=-4;fontSize=30;fontStyle=1;fontFamily=Helvetica;" value="AWS Nuke Resource Deletion Architecture" vertex="1" parent="title-group">
+        <mxCell id="title-text" style="text;html=1;resizable=1;points=[];autosize=1;align=left;verticalAlign=top;spacingTop=-4;fontSize=30;fontStyle=1;fontFamily=Helvetica;" value="AWS Nuke Resource Teardown Architecture" vertex="1" parent="title-group">
           <mxGeometry height="42" width="800" as="geometry" />
         </mxCell>
         <mxCell id="subtitle-text" style="text;html=1;resizable=0;points=[];autosize=1;align=left;verticalAlign=top;spacingTop=-4;fontSize=16;fontFamily=Helvetica;" value="Multi-region parallel resource deletion using Step Functions, Lambda containers, and aws-nuke v3" vertex="1" parent="title-group">
@@ -346,6 +346,23 @@
         </mxCell>
 
 
+
+        <!-- CodeBuild -->
+        <mxCell id="grp-codebuild" style="fillColor=#FFF2E8;strokeColor=#ED7100;rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=12;fontColor=#ED7100;fontFamily=Helvetica;container=1;collapsible=0;shadow=1;strokeWidth=1.5;" value="Build" vertex="1" parent="account-svc-catalog">
+          <mxGeometry x="1230" y="180" width="120" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-codebuild" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#ED7100;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.codebuild;fontFamily=Helvetica;shadow=1;" value="CodeBuild&lt;div&gt;&lt;i&gt;build &amp;amp; push image&lt;/i&gt;&lt;/div&gt;" vertex="1" parent="grp-codebuild">
+          <mxGeometry x="36" y="30" width="48" height="48" as="geometry" />
+        </mxCell>
+        <!-- CodeBuild to ECR -->
+        <mxCell id="edge-codebuild-to-ecr" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Helvetica;strokeWidth=2;strokeColor=#ED7100;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="account-svc-catalog" source="svc-codebuild" target="svc-ecr">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-codebuild-to-ecr-label" value="push image" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=none;fontSize=11;fontFamily=Helvetica;" connectable="0" vertex="1" parent="edge-codebuild-to-ecr">
+          <mxGeometry relative="1" x="0" y="0" as="geometry">
+            <mxPoint x="15" as="offset" />
+          </mxGeometry>
+        </mxCell>
 
         <!-- Parallel invocation label -->
         <mxCell id="parallel-label" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;fontSize=11;fontFamily=Helvetica;fontStyle=2;fontColor=#ED7100;" value="Map state (parallel invocation)" vertex="1" parent="account-svc-catalog">
