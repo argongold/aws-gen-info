@@ -59,6 +59,115 @@ Step Functions assumes a role in the target account, but the Lambdas run in the 
 
 **Fix:** Pass the target account's role ARN in the Lambda event payload. The bootstrap/aws-nuke config should use that role via `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` (from STS assume-role) or configure aws-nuke's built-in account credential support.
 
+#### IAM Roles Required (3 Total)
+
+| # | Role | Account | Trusted By | Key Permission |
+|---|------|---------|------------|----------------|
+| 1 | StepFunctionsExecutionRole | Service Catalog | `states.amazonaws.com` | Invoke Lambda, DynamoDB, SNS |
+| 2 | NukeLambdaExecutionRole | Service Catalog | `lambda.amazonaws.com` | `sts:AssumeRole` into target |
+| 3 | NukeExecutionRole | Target | Lambda role in service catalog account | `AdministratorAccess` |
+
+#### Trust Policies
+
+**Role 1 — StepFunctionsExecutionRole:**
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": { "Service": "states.amazonaws.com" },
+      "Action": "sts:AssumeRole",
+      "Condition": {
+        "StringEquals": { "aws:SourceAccount": "SERVICE_CATALOG_ACCOUNT_ID" }
+      }
+    }
+  ]
+}
+```
+
+**Role 2 — NukeLambdaExecutionRole:**
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": { "Service": "lambda.amazonaws.com" },
+      "Action": "sts:AssumeRole",
+      "Condition": {
+        "StringEquals": { "aws:SourceAccount": "SERVICE_CATALOG_ACCOUNT_ID" }
+      }
+    }
+  ]
+}
+```
+
+**Role 3 — NukeExecutionRole (most security-sensitive — carries AdministratorAccess):**
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::SERVICE_CATALOG_ACCOUNT_ID:role/NukeLambdaExecutionRole"
+      },
+      "Action": "sts:AssumeRole",
+      "Condition": {
+        "StringEquals": {
+          "sts:ExternalId": "nuke-execution-SECRET_VALUE"
+        }
+      }
+    }
+  ]
+}
+```
+
+#### Permission Policies (what each role can do)
+
+**Role 1 — StepFunctionsExecutionRole permissions:**
+- `lambda:InvokeFunction` — invoke regional nuke Lambdas
+- `dynamodb:PutItem`, `UpdateItem`, `GetItem`, `Query` — state tracking
+- `sns:Publish` — completion/failure notifications
+- `ec2:DescribeRegions` — active region discovery (if done in Step Functions directly)
+
+**Role 2 — NukeLambdaExecutionRole permissions:**
+- `sts:AssumeRole` on `arn:aws:iam::TARGET_ACCOUNT_ID:role/NukeExecutionRole`
+- `ssm:GetParameter` — pull nuke-config.yaml from SSM
+- `logs:CreateLogGroup`, `CreateLogStream`, `PutLogEvents` — CloudWatch logging
+
+**Role 3 — NukeExecutionRole permissions:**
+- `AdministratorAccess` (AWS managed policy) — aws-nuke needs broad permissions to discover and delete all resource types
+
+#### Security Considerations
+
+| Concern | Mitigation |
+|---------|-----------|
+| Role 3 has AdministratorAccess | Necessary for aws-nuke; only deploy Role 3 in accounts meant for cleanup |
+| External ID leakage | Store in Secrets Manager, not hardcoded in CFN templates |
+| Rogue Lambda in service catalog account | Trust policy on Role 3 only allows the specific Lambda execution role, not account root |
+| Someone modifies the Lambda execution role | SCPs + IAM permission boundaries on the service catalog account prevent unauthorized modifications |
+
+#### How the External ID Flows
+
+```
+Step Functions event payload:
+{
+  "target_account_id": "123456789012",
+  "target_role_arn": "arn:aws:iam::123456789012:role/NukeExecutionRole",
+  "external_id": "nuke-execution-SECRET_VALUE",
+  "region": "eu-west-1"
+}
+
+Bootstrap script:
+  export AWS_ASSUME_ROLE=$TARGET_ROLE_ARN
+  export AWS_ASSUME_ROLE_EXTERNAL_ID=$EXTERNAL_ID
+  aws-nuke run --config ... --no-prompt --no-dry-run
+```
+
+aws-nuke v3 supports `--assume-role-external-id` natively (see point 9).
+
 ### 4. Deployment Model (Centralized in Service Catalog Account)
 
 The entire solution is deployed in the service catalog account:
@@ -170,7 +279,67 @@ aws-nuke run --config /var/task/nuke-config.yaml --no-prompt --no-dry-run 2>&1
 
 **Recommended approach for this architecture:**
 
-The Lambda event payload (from Step Functions) includes the target role ARN. The bootstrap script extracts it and sets `AWS_ASSUME_ROLE` before running aws-nuke. This keeps credentials handling clean — aws-nuke manages the STS call internally via the AWS SDK.
+The Lambda event payload (from Step Functions) includes the target role ARN, external ID, and execution mode. The bootstrap script uses the Lambda Runtime API to receive invocations, extracts cross-account parameters, and passes them to aws-nuke via environment variables.
+
+**Expected event payload from Step Functions:**
+```json
+{
+  "target_role_arn": "arn:aws:iam::123456789012:role/NukeExecutionRole",
+  "external_id": "nuke-execution-SECRET_VALUE",
+  "region": "eu-west-1",
+  "no_dry_run": true
+}
+```
+
+**Full bootstrap script (Lambda custom runtime):**
+```bash
+#!/bin/bash
+set -euo pipefail
+
+# Fetch nuke config from SSM (once per cold start)
+aws ssm get-parameter \
+  --name "/aws-nuke/config" \
+  --with-decryption \
+  --query "Parameter.Value" \
+  --output text > /tmp/nuke-config.yaml
+
+# Lambda custom runtime loop
+while true; do
+  HEADERS="$(mktemp)"
+  EVENT_DATA=$(curl -sS -LD "$HEADERS" "http://${AWS_LAMBDA_RUNTIME_API}/2018-06-01/runtime/invocation/next")
+  REQUEST_ID=$(grep -Fi Lambda-Runtime-Aws-Request-Id "$HEADERS" | tr -d '[:space:]' | cut -d: -f2)
+
+  # Extract cross-account parameters from Step Functions payload
+  export AWS_ASSUME_ROLE=$(echo "$EVENT_DATA" | jq -r '.target_role_arn')
+  export AWS_ASSUME_ROLE_EXTERNAL_ID=$(echo "$EVENT_DATA" | jq -r '.external_id')
+  export AWS_ASSUME_ROLE_SESSION_NAME="nuke-$(echo "$EVENT_DATA" | jq -r '.region')-$(date +%s)"
+  NO_DRY_RUN=$(echo "$EVENT_DATA" | jq -r '.no_dry_run // "false"')
+
+  # Build aws-nuke command
+  NUKE_CMD="aws-nuke run --config /tmp/nuke-config.yaml --no-prompt --no-alias-check"
+  if [ "$NO_DRY_RUN" = "true" ]; then
+    NUKE_CMD="$NUKE_CMD --no-dry-run"
+  fi
+
+  echo "=== aws-nuke run (region=$(echo "$EVENT_DATA" | jq -r '.region'), no_dry_run=$NO_DRY_RUN) ==="
+  RESPONSE=$($NUKE_CMD 2>&1 | tee /dev/stderr || true)
+
+  # Return result to Lambda Runtime API
+  curl -sS -X POST "http://${AWS_LAMBDA_RUNTIME_API}/2018-06-01/runtime/invocation/$REQUEST_ID/response" -d "$RESPONSE"
+done
+```
+
+**How it works:**
+1. On cold start, fetches `nuke-config.yaml` from SSM Parameter Store (once)
+2. Enters the Runtime API loop — blocks until Step Functions invokes the Lambda
+3. Extracts `target_role_arn`, `external_id`, and `no_dry_run` from the event payload
+4. Sets `AWS_ASSUME_ROLE` and `AWS_ASSUME_ROLE_EXTERNAL_ID` — aws-nuke reads these and internally calls `sts:AssumeRole`
+5. Runs aws-nuke with or without `--no-dry-run` based on the event
+6. Returns raw output to the caller and waits for the next invocation
+
+This keeps credentials handling clean — aws-nuke manages the STS call internally via the AWS SDK, passing the external ID automatically.
+
+> **See also:** [Create Docker Container with CodeBuild](create-docker-container-with-codebuild.md) — Point 2 (bootstrap details) and Point 3 Option B (inline buildspec with NO_SOURCE).
 
 **Note:** STS session token expiry is not a concern here since Lambda's max timeout (15 min) is well within the default 1-hour session duration.
 
