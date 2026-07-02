@@ -90,6 +90,32 @@ For us-east-1:
 
 ---
 
+## Direct Lambda Invocation (Testing)
+
+For testing outside of Step Functions, invoke the Lambda directly via CLI:
+
+```bash
+aws lambda invoke \
+  --function-name aws-nuke-runner \
+  --cli-binary-format raw-in-base64-out \
+  --payload '{
+    "target_account_id": "123456789012",
+    "target_role_arn": "arn:aws:iam::123456789012:role/NukeExecutionRole",
+    "region": "eu-west-1",
+    "regions": ["eu-west-1"],
+    "no_dry_run": false
+  }' \
+  /tmp/nuke-response.json && cat /tmp/nuke-response.json | jq .
+```
+
+**Notes:**
+- Set `no_dry_run` to `false` for a safe dry-run (default behavior)
+- The payload schema is identical to what Step Functions passes — no adapter needed
+- Check CloudWatch logs for the full aws-nuke output; the response file contains only the structured JSON summary
+- For global resources testing, use `"regions": ["global", "us-east-1"]` with `"region": "us-east-1"`
+
+---
+
 ## Lambda Structured Response
 
 Each invocation returns structured JSON (not raw stdout) for Step Functions to make retry decisions:
