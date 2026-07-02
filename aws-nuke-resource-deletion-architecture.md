@@ -71,7 +71,6 @@ The bootstrap script injects the `regions:` list into the nuke config dynamicall
 {
   "target_account_id": "123456789012",
   "target_role_arn": "arn:aws:iam::123456789012:role/NukeExecutionRole",
-  "external_id": "nuke-execution-SECRET_VALUE",
   "region": "eu-west-1",
   "regions": ["eu-west-1"],
   "no_dry_run": true
@@ -83,7 +82,6 @@ For us-east-1:
 {
   "target_account_id": "123456789012",
   "target_role_arn": "arn:aws:iam::123456789012:role/NukeExecutionRole",
-  "external_id": "nuke-execution-SECRET_VALUE",
   "region": "us-east-1",
   "regions": ["global", "us-east-1"],
   "no_dry_run": true
@@ -136,7 +134,6 @@ while true; do
 
   # Extract parameters from Step Functions payload
   export AWS_ASSUME_ROLE=$(echo "$EVENT_DATA" | jq -r '.target_role_arn')
-  export AWS_ASSUME_ROLE_EXTERNAL_ID=$(echo "$EVENT_DATA" | jq -r '.external_id')
   export AWS_ASSUME_ROLE_SESSION_NAME="nuke-$(echo "$EVENT_DATA" | jq -r '.region')-$(date +%s)"
   REGION=$(echo "$EVENT_DATA" | jq -r '.region')
   REGIONS_JSON=$(echo "$EVENT_DATA" | jq -r '.regions | join("\n  - ")')
@@ -192,11 +189,10 @@ aws-nuke v3 (ekristen/aws-nuke) natively supports cross-account role assumption 
 |--------|----------|---------------------|
 | Assume Role ARN | `--assume-role` | `AWS_ASSUME_ROLE` |
 | Session Name | `--assume-role-session-name` | `AWS_ASSUME_ROLE_SESSION_NAME` |
-| External ID | `--assume-role-external-id` | `AWS_ASSUME_ROLE_EXTERNAL_ID` |
 | Profile | `--profile` | `AWS_PROFILE` |
 | Region | `--region` | `AWS_REGION` |
 
-The bootstrap sets `AWS_ASSUME_ROLE` and `AWS_ASSUME_ROLE_EXTERNAL_ID` from the event payload — aws-nuke handles the STS call internally.
+The bootstrap sets `AWS_ASSUME_ROLE` from the event payload — aws-nuke handles the STS call internally.
 
 **Note:** STS session token expiry is not a concern since Lambda's max timeout (15 min) is well within the default 1-hour session duration.
 
@@ -254,12 +250,12 @@ The bootstrap sets `AWS_ASSUME_ROLE` and `AWS_ASSUME_ROLE_EXTERNAL_ID` from the 
     {
       "Effect": "Allow",
       "Principal": {
-        "AWS": "arn:aws:iam::SERVICE_CATALOG_ACCOUNT_ID:role/NukeLambdaExecutionRole"
+        "AWS": "arn:aws:iam::SERVICE_CATALOG_ACCOUNT_ID:root"
       },
       "Action": "sts:AssumeRole",
       "Condition": {
-        "StringEquals": {
-          "sts:ExternalId": "nuke-execution-SECRET_VALUE"
+        "ArnEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::SERVICE_CATALOG_ACCOUNT_ID:role/NukeLambdaExecutionRole"
         }
       }
     }
@@ -287,8 +283,7 @@ The bootstrap sets `AWS_ASSUME_ROLE` and `AWS_ASSUME_ROLE_EXTERNAL_ID` from the 
 | Concern | Mitigation |
 |---------|-----------|
 | Role 3 has AdministratorAccess | Necessary for aws-nuke; only deploy Role 3 in accounts meant for cleanup |
-| External ID in Step Functions execution history | Store in Secrets Manager; Lambda fetches directly instead of receiving in payload |
-| Rogue Lambda in service catalog account | Trust policy on Role 3 only allows the specific Lambda execution role, not account root |
+| Rogue Lambda in service catalog account | Trust policy on Role 3 uses `ArnEquals` condition — only the specific Lambda execution role ARN can assume it, even though the principal is account root |
 | Someone modifies the Lambda execution role | SCPs + IAM permission boundaries on the service catalog account prevent unauthorized modifications |
 | eu-west-1 outage blocks all cleanup | Acceptable risk for internal tooling; failover not required |
 
