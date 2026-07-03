@@ -39,7 +39,7 @@ All infrastructure lives in eu-west-1 in the service catalog account:
 | Lambda (container) | eu-west-1 | Single function, concurrent invocations handle parallelism |
 | Step Functions | eu-west-1 | Orchestrates fan-out and retry logic |
 | DynamoDB table | eu-west-1 | State tracking |
-| SSM Parameter | eu-west-1 | Base nuke-config.yaml (uses `PLACEHOLDER_ACCOUNT` token and `regions: ["placeholder"]`) |
+| SSM Parameter | eu-west-1 | Base nuke-config.yaml (uses `PLACEHOLDER_ACCOUNT` token; `regions:` block appended dynamically at runtime) |
 | SNS topic | eu-west-1 | Completion/failure notifications |
 
 **Why single-region Lambda works:** aws-nuke doesn't need to run *in* the target region. It makes API calls to regional endpoints from wherever it runs. A Lambda in eu-west-1 can delete resources in ap-southeast-1 — aws-nuke handles regional API routing internally via the `regions:` config key.
@@ -163,13 +163,18 @@ while true; do
   export AWS_ASSUME_ROLE_SESSION_NAME="nuke-$(echo "$EVENT_DATA" | jq -r '.region')-$(date +%s)"
   TARGET_ACCOUNT_ID=$(echo "$EVENT_DATA" | jq -r '.target_account_id')
   REGION=$(echo "$EVENT_DATA" | jq -r '.region')
-  REGIONS_JSON=$(echo "$EVENT_DATA" | jq -r '.regions | join("\n  - ")')
   NO_DRY_RUN=$(echo "$EVENT_DATA" | jq -r '.no_dry_run // "false"')
 
-  # Inject target account and regions into nuke config
+  # Inject target account into nuke config
   cp /tmp/nuke-config-base.yaml /tmp/nuke-config.yaml
   sed -i "s/PLACEHOLDER_ACCOUNT/${TARGET_ACCOUNT_ID}/g" /tmp/nuke-config.yaml
-  sed -i "s/^regions:.*$/regions:\n  - ${REGIONS_JSON}/" /tmp/nuke-config.yaml
+
+  # Append regions block dynamically (not present in base config)
+  REGIONS_BLOCK="regions:"
+  for r in $(echo "$EVENT_DATA" | jq -r '.regions[]'); do
+    REGIONS_BLOCK="${REGIONS_BLOCK}\n  - ${r}"
+  done
+  echo -e "$REGIONS_BLOCK" >> /tmp/nuke-config.yaml
 
   # Build aws-nuke command
   NUKE_CMD="aws-nuke run --config /tmp/nuke-config.yaml --no-prompt --no-alias-check"
@@ -191,7 +196,7 @@ done
 ```
 
 **Key differences from previous design:**
-- Injects `regions:` dynamically from the payload (no per-region SSM parameters)
+- Appends `regions:` block dynamically from the payload (no per-region SSM parameters, no `sed` replacement)
 - Injects target account ID by replacing `PLACEHOLDER_ACCOUNT` token in base config
 - Error trap posts to `/error` endpoint on crash
 - Parses aws-nuke output into structured JSON via `parse-nuke-output.sh`
@@ -370,13 +375,11 @@ The bootstrap captures aws-nuke's partial progress and reports it — no work is
 
 ## Settings for Protected Resources
 
-The base nuke-config.yaml in SSM uses `PLACEHOLDER_ACCOUNT` and `regions: ["placeholder"]` as tokens that get replaced dynamically at runtime:
+The base nuke-config.yaml in SSM uses `PLACEHOLDER_ACCOUNT` as a token that gets replaced dynamically at runtime. The `regions:` block is **not** included in the base config — it is appended dynamically by the bootstrap script based on the event payload:
 
 ```yaml
 bypass-alias-check-accounts:
   - "PLACEHOLDER_ACCOUNT"
-
-regions: ["placeholder"]
 
 accounts:
   "PLACEHOLDER_ACCOUNT":
