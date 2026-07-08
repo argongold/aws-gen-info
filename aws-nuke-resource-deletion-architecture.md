@@ -159,7 +159,7 @@ while true; do
     -d "{\"errorMessage\":\"Bootstrap crashed\",\"errorType\":\"RuntimeError\"}"' ERR
 
   # Extract parameters from Step Functions payload
-  export AWS_ASSUME_ROLE=$(echo "$EVENT_DATA" | jq -r '.target_role_arn')
+  export AWS_ASSUME_ROLE_ARN=$(echo "$EVENT_DATA" | jq -r '.target_role_arn')
   export AWS_ASSUME_ROLE_SESSION_NAME="nuke-$(echo "$EVENT_DATA" | jq -r '.region')-$(date +%s)"
   TARGET_ACCOUNT_ID=$(echo "$EVENT_DATA" | jq -r '.target_account_id')
   REGION=$(echo "$EVENT_DATA" | jq -r '.region')
@@ -221,12 +221,12 @@ aws-nuke v3 (ekristen/aws-nuke) natively supports cross-account role assumption 
 
 | Method | CLI Flag | Environment Variable |
 |--------|----------|---------------------|
-| Assume Role ARN | `--assume-role` | `AWS_ASSUME_ROLE` |
+| Assume Role ARN | `--assume-role-arn` | `AWS_ASSUME_ROLE_ARN` |
 | Session Name | `--assume-role-session-name` | `AWS_ASSUME_ROLE_SESSION_NAME` |
 | Profile | `--profile` | `AWS_PROFILE` |
 | Region | `--region` | `AWS_REGION` |
 
-The bootstrap sets `AWS_ASSUME_ROLE` from the event payload — aws-nuke handles the STS call internally.
+The bootstrap sets `AWS_ASSUME_ROLE_ARN` from the event payload — aws-nuke handles the STS call internally.
 
 **Note:** STS session token expiry is not a concern since Lambda's max timeout (15 min) is well within the default 1-hour session duration.
 
